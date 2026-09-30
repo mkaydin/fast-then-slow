@@ -243,13 +243,19 @@ OOMs with `CUBLAS_STATUS_ALLOC_FAILED`. This is the main throughput headroom lef
   annotated fields but no `@dataclass`; a stale `gate_confidence` call signature; and
   `for delta in chunks` over an async generator, which made streaming return nothing at all.
 
-### Phase 4 — Evaluation ⚠️ partial
-- Done: a 10-case labelled set, AUC per candidate question, a verifier probe over 5 drafts
-  including verbatim model output, and an end-to-end A/B showing 27.8 ms vs 1282 ms.
-- **Not done**: the threshold sweep over a real labelled set, and a reliability curve. Ten
-  cases caught three design defects but cannot call any threshold *tuned*.
-- The weak spot it did surface: `needs_deliberation` separates its classes by 0.01
-  (0.11 vs 0.12). AUC 1.000 on ten points is not a robust estimate.
+### Phase 4 — Evaluation ✅ (and it found something)
+- 40 labelled cases, swept across 9 candidate thresholds (`scripts/sweep_thresholds.py`),
+  plus the 10-case question probe and a 5-draft verifier probe including verbatim model
+  output. End-to-end A/B: 27.8 ms against 1282 ms.
+- **The sweep contradicted the probe.** `needs_deliberation` measured AUC 1.000 on 10
+  cases; on 40 cases the best threshold reaches only **0.625** route accuracy and misses
+  9 of 20 genuinely hard requests. `think_threshold` moved 0.15 → **0.05** on that
+  evidence.
+- This matches Laya's own model card (base checkpoint 0.362 on typed-decisions vs 0.766
+  fine-tuned). Deliberation is the weakest link and is flagged as such in the config and
+  README rather than presented as a tuned optimisation.
+- **Not done**: a reliability curve, and any evaluation against real traffic. The 40
+  labels are hand-written.
 
 ### Phase 5 — Ops and docs ✅
 - Launch scripts, `/healthz`, a `laya` decision record on every response, README with the

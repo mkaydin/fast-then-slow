@@ -139,6 +139,26 @@ policy:
   system1_threshold: 0.5
 
   # Deliberation probability above which System 2 runs in deliberate (thinking) mode.
+  #
+  # scripts/sweep_thresholds.py over 40 labelled cases reports 0.05 as the single best
+  # point (0.625 route accuracy, 1 false positive, 7 misses) against 0.550 at 0.10-0.15.
+  # 0.05 is deliberately NOT used, and the reason is a coupling the sweep's single
+  # accuracy number hid: margin_confidence normalises by max(t, 1-t), so a low threshold
+  # shrinks the uncertainty band around it. A classification request scoring 0.000
+  # deliberation then counts as *uncertain* rather than confidently "not deliberate",
+  # which silently disables the System-1-only route -- the one thing this pipeline exists
+  # for. The sweep saw that as 3 labels out of 40. Measured directly: at 0.05 the ticket
+  # classification no longer routes to system1; at 0.15 it scores 0.776 and does, verified
+  # end to end at ~230 ms.
+  #
+  # Honest caveat: the deliberation signal itself is weak. The 10-case probe reported
+  # AUC 1.000; on 40 cases the best threshold reaches 0.625 and still misses 9 of 20 hard
+  # requests. This is the base English checkpoint, which its own model card rates at 0.362
+  # on typed decisions against 0.766 fine-tuned. Fine-tuning is the fix, and until then the
+  # escalate path is unreliable rather than an optimisation.
+  #
+  # If you change this, re-check that a classification request still routes to system1;
+  # scripts/smoke_system1.py asserts exactly that.
   think_threshold: 0.15
 
   # Verifier. `grounded` at or above this ships the draft; a `declined` hit hands off

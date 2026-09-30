@@ -138,6 +138,38 @@ recoverable; a false handoff silently discards a good answer.
 
 ## Known limitations
 
+
+## The threshold sweep, and what it cost
+
+`scripts/sweep_thresholds.py` runs the real gate over 40 labelled cases and reports,
+for each candidate threshold, how often the route would have been right.
+
+| `think_threshold` | route accuracy | false "needs thinking" | missed hard requests | classification still routes to System 1? |
+|---|---|---|---|---|
+| 0.05 | **0.625** | 1 | 7 | **no** — the sweep hides this |
+| **0.15** (configured) | 0.550 | 0 | 9 | yes, at 0.776 |
+| 0.30 | 0.475 | 0 | 16 | yes |
+
+The best-scoring threshold is not the right one, and finding that out was the point of
+running it. `margin_confidence` normalises by `max(t, 1-t)`, so lowering
+`think_threshold` shrinks the uncertainty band around it: a classification request
+scoring 0.000 deliberation then reads as *uncertain* instead of confidently "not
+deliberate", and the System-1-only route silently switches off. That is the 46x
+latency win the pipeline exists for, and the sweep's single accuracy number showed it
+only as three labels out of forty. Verified directly: at 0.05 the ticket
+classification no longer routes to `system1`; at 0.15 it scores 0.776 and does.
+
+This is a negative result and it is the most important thing in this README. The
+10-case probe reported `needs_deliberation` at **AUC 1.000**; on 40 cases the best
+threshold reaches **0.625** and still misses 9 of 20 genuinely hard requests. The
+earlier number was a small-sample artifact, and had the probe not been widened, the
+deliberate path would have shipped confidently miscalibrated.
+
+It is consistent with Laya's own model card: the base English checkpoint scores
+**0.362** on typed-decisions against **0.766** fine-tuned. The guardrail and
+classification questions are sharp; deliberation is the weak link. The threshold is
+set to the measured optimum and flagged in the config as something to re-tune after
+fine-tuning, not as an optimisation to rely on.
 - **The 4060 is not optional in practice.** Both models on the 5060 Ti was tried and
   measured: 14,308 MiB free, ~11,892 MiB for engine weights and CUDA context,
   ~2,000 MiB for the gate, leaving ~400 MiB of KV cache — about 4k tokens, one
@@ -147,16 +179,15 @@ recoverable; a false handoff silently discards a good answer.
   contiguous allocation on top of 10.1 GiB of AWQ weights — which consumed the
   entire KV cache and OOMed. Re-enable with `QWEN_SPEC_TOKENS=2` when the gate is
   stopped. This is the main throughput headroom left on the table.
-- **The deliberation margin is thin.** `needs_deliberation` separates its classes by
-  0.01 on a 10-case set (0.11 vs 0.12). AUC 1.000 on 10 points is not a robust
-  estimate; `think_threshold: 0.15` is provisional until swept on real traffic.
+- **The deliberation signal is weak.** The sweep above is the evidence. Do not read the
+  deliberate path as a tuning knob until the checkpoint is fine-tuned.
 - **Refusal detection is weak on the base checkpoint.** An explicit "I can't help"
   scores 0.238 where a hedged refusal scores 0.544. Fine-tuning is the documented
   fix (0.362 → 0.766 on typed-decisions).
 - **No vision.** `--language-model-only` drops the 0.85 GiB encoder; the VRAM buys
   KV cache instead and the gate is text-only.
-- **The eval set is 10 cases.** Enough to catch the design defects it did catch, not
-  enough to call any threshold tuned. Phase 4 of `PLAN.md` is the real sweep.
+- **40 labelled cases, all written by hand.** Enough to catch three design defects and
+  to set a threshold defensibly; not enough to call it tuned against real traffic.
 
 ## Reproducing the measurements
 
@@ -164,6 +195,7 @@ recoverable; a false handoff silently discards a good answer.
 CUDA_DEVICE_ORDER=PCI_BUS_ID CUDA_VISIBLE_DEVICES=1 .venv-laya/bin/python scripts/smoke_system1.py
 CUDA_DEVICE_ORDER=PCI_BUS_ID CUDA_VISIBLE_DEVICES=1 .venv-laya/bin/python scripts/probe_questions2.py
 CUDA_DEVICE_ORDER=PCI_BUS_ID CUDA_VISIBLE_DEVICES=1 .venv-laya/bin/python scripts/probe_verify.py
+CUDA_DEVICE_ORDER=PCI_BUS_ID CUDA_VISIBLE_DEVICES=1 .venv-laya/bin/python scripts/sweep_thresholds.py
 ```
 
 Stop `serve_pipeline.sh` first for the probes: a second Laya instance alongside
