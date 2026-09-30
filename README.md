@@ -204,6 +204,24 @@ change it, re-check that a classification request still takes the `system1` rout
   `--reasoning-parser qwen3` reports `reasoning_tokens` in usage yet leaves
   `reasoning_content` empty, so there is no reasoning text to show.
 
+## Licensing
+
+This project is Apache-2.0 (see `LICENSE`). The components it depends on:
+
+| Component | License |
+|---|---|
+| `Qwen/Qwen3.5-9B` | Apache-2.0 |
+| `convaiinnovations/laya` | Apache-2.0 |
+| vLLM | Apache-2.0 |
+| `nicklas373/Qwen3.5-9B-AWQ` | third-party quantization — check its own terms |
+
+Apache-2.0 permits modification, fine-tuning, commercial use and redistribution, so
+fine-tuning Laya on your own dataset and shipping the result is fine. The conditions
+that survive are attribution and the licence/notice files: keep the upstream
+attribution for Qwen and Laya, and if you redistribute a fine-tuned checkpoint,
+carry the licence and any NOTICE file with it. Weights are not committed to this
+repository, so nothing here needs that treatment yet.
+
 ## Reproducing the measurements
 
 ```bash
