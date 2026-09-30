@@ -151,7 +151,8 @@ plan treats threshold tuning as a measured deliverable (Phase 4), not a config g
 ```
 
 Latency of the gate is paid once, up front, before any token streams — so a request the gate
-resolves never pays TTFT at all. Measured: 27.8 ms versus 1282 ms, a 46x difference.
+resolves never pays TTFT at all. Measured over 8 runs: 28 ms wall against 821-1282 ms for
+the fast path, a 29-46x difference.
 
 ### Why Laya and Qwen live in separate processes, separate venvs, and separate cards
 

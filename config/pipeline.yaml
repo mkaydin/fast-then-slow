@@ -148,8 +148,8 @@ policy:
   # deliberation then counts as *uncertain* rather than confidently "not deliberate",
   # which silently disables the System-1-only route -- the one thing this pipeline exists
   # for. The sweep saw that as 3 labels out of 40. Measured directly: at 0.05 the ticket
-  # classification no longer routes to system1; at 0.15 it scores 0.776 and does, verified
-  # end to end at ~230 ms.
+  # classification no longer routes to system1; at 0.15 it scores 0.776 and does, answering
+  # in ~28 ms of wall time with no engine call (median over 8 runs).
   #
   # Honest caveat: the deliberation signal itself is weak. The 10-case probe reported
   # AUC 1.000; on 40 cases the best threshold reaches 0.625 and still misses 9 of 20 hard
