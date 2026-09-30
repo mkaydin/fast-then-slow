@@ -1,0 +1,34 @@
+[project]
+name = "system1-local-ai"
+version = "1.0.0"
+description = "Laya System-1 gate in front of a local Qwen3.5-9B int4 engine"
+requires-python = ">=3.10,<3.15"
+license = { text = "Apache-2.0" }
+
+# The two models run in separate venvs on purpose; see PLAN.md §2. These are the
+# app-side (gate) requirements. vLLM is not a dependency of this package -- it is
+# an external service the gate routes to over HTTP.
+dependencies = [
+    "laya>=0.3.22",
+    "fastapi>=0.110.0",
+    "uvicorn>=0.27.0",
+    "httpx>=0.27.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+system1-server = "system1.server:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["system1"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

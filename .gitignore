@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.venv-*/
+
+# Model + cache (kept off the repo; see PLAN.md §3)
+.cache/
+models/
+*.log
+
+# Local run state
+run/
+results/
+*.jsonl
+
+# Editors
+.vscode/
+.idea/
