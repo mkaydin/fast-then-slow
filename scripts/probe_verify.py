@@ -85,8 +85,8 @@ VARIANTS = {
 def main() -> int:
     cfg = config_module.load()
     gate = System1(
-        questions=cfg.gate_questions(),
-        verify_questions=cfg.verify_questions(),
+        questions=cfg.gate_questions,
+        verify_questions=cfg.verify_questions,
         repo=cfg.laya.get("repo", ""),
         device=cfg.laya.get("device", "cuda:0"),
         expect_name=cfg.laya.get("expect_name", ""),
@@ -96,12 +96,12 @@ def main() -> int:
     gate.verify(REQUEST, DRAFTS[0][1])  # warm
 
     for name, override in VARIANTS.items():
-        questions = {**cfg.verify_questions(), **override}
+        questions = {**cfg.verify_questions, **override}
         print(f"\n=== {name} ===")
         mismatches = 0
         for label, draft, expected in DRAFTS:
             answers = gate.verify(REQUEST, draft, questions=questions).answers
-            verdict = policy.verify(answers, cfg.policy)
+            verdict = policy.verify(answers, cfg.by_role)
             got = "escalate" if verdict.escalate else verdict.outcome
             ok = got == expected or (expected == policy.HANDOFF and got == "escalate")
             mismatches += 0 if ok else 1

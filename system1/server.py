@@ -129,8 +129,8 @@ def create_app() -> FastAPI:
         app.state.config = cfg
 
         gate = System1(
-            questions=cfg.gate_questions(),
-            verify_questions=cfg.verify_questions(),
+            questions=cfg.gate_questions,
+            verify_questions=cfg.verify_questions,
             repo=cfg.laya.get("repo", ""),
             device=cfg.laya.get("device", "cuda:0"),
             expect_name=cfg.laya.get("expect_name", ""),
@@ -196,7 +196,7 @@ def create_app() -> FastAPI:
         state: State = app.state.state
         questions = {k: v.model_dump(exclude_none=True) for k, v in request.questions.items()}
         if not questions:
-            questions = app.state.config.gate_questions()
+            questions = app.state.config.gate_questions
         result = state.pipeline.gate.router.predict(
             request.state,
             questions,

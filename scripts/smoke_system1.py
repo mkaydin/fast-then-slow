@@ -51,8 +51,8 @@ def main() -> int:
 
     started = time.perf_counter()
     gate = System1(
-        questions=cfg.gate_questions(),
-        verify_questions=cfg.verify_questions(),
+        questions=cfg.gate_questions,
+        verify_questions=cfg.verify_questions,
         repo=laya_cfg.get("repo", ""),
         device=laya_cfg.get("device", "cuda:0"),
         expect_name=laya_cfg.get("expect_name", ""),
@@ -67,7 +67,7 @@ def main() -> int:
     failures = []
     for state, expected in SAMPLES:
         result = gate.gate(state)
-        route = policy.decide(result.answers, cfg.policy)
+        route = policy.decide(result.answers, cfg.by_role, cfg.uncertain_below)
 
         print(f"\nstate       : {state[:72]}")
         print(f"routing     : {result.model_name} ({result.routing.get('reason', '')})")

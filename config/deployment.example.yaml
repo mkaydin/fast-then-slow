@@ -1,0 +1,56 @@
+# Machine-specific deployment. Copy to deployment.yaml and edit.
+#
+# This file is gitignored because its contents are this machine's, not the
+# project's: GPU indices, PCI bus ids, VRAM budgets and ports. The portable half --
+# which question plays which role, at what threshold -- lives in pipeline.yaml and
+# is the part a fine-tune is trained against.
+#
+# Device selection notes, measured on the reference machine (5060 Ti + 4060):
+#
+#   CUDA_DEVICE_ORDER=PCI_BUS_ID -> cuda:0 = RTX 5060 Ti, cuda:1 = RTX 4060
+#   Default enumeration swaps them.
+#   Selecting by PCI bus id in CUDA_VISIBLE_DEVICES does NOT work here:
+#   "0000:07:00.0" silently yields the 5060 Ti, and "07:00.0" yields nothing.
+#   The integer index under PCI_BUS_ID is the selector that works, and
+#   system1.gate._assert_device refuses to start on the wrong card.
+#
+# The two models need separate cards. Both on one was measured: engine weights plus
+# CUDA context are ~11,892 MiB of the 14,308 MiB free on the 5060 Ti, leaving ~400
+# MiB for KV cache, and the gate then fails with cuDevicePrimaryCtxRetain OOM. The
+# gate benchmarks at the same ~28 ms on either card, so the split is free.
+#
+# Single-GPU deployments: set both models to the same cuda_visible_devices and lower
+# gpu_memory_utilization to leave the gate room. Expect roughly 4k tokens of
+# context.
+
+models:
+  # System 2 — generative engine. Serve this separately, or swap it for any
+  # OpenAI-compatible endpoint.
+  llm:
+    repo: nicklas373/Qwen3.5-9B-AWQ
+    served_name: qwen35-9b-int4
+    base_url: http://127.0.0.1:8000/v1
+    # Leave the GPU memory budget below, or raise it if you stop the gate.
+    gpu_memory_utilization: 0.85
+    max_model_len: 32768
+    max_num_seqs: 8
+    # MTP speculative decoding needs a 1.9 GiB unquantized draft layer on top of the
+    # weights and consumes the whole KV cache here. 0 disables it; raise only with
+    # the gate stopped.
+    num_speculative_tokens: 0
+
+  # System 1 — decision model. Point `repo` at your fine-tuned checkpoint to use it.
+  laya:
+    repo: convaiinnovations/laya
+    cuda_visible_devices: 1       # index under CUDA_DEVICE_ORDER=PCI_BUS_ID
+    expect_name: "4060"           # startup fails if a different GPU is visible
+    device: cuda:0                # the only device this process can see
+    # Both automatically-routed checkpoints stay hot; on a dedicated card there is
+    # room, so a language switch costs detection (<1 ms) rather than a reload.
+    preload: [english, multilingual]
+    max_loaded: 2
+    min_confidence: 0.0           # 0.0 reports confidence; raise to abstain
+
+server:
+  host: 127.0.0.1
+  port: 8100

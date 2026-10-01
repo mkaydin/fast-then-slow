@@ -79,10 +79,9 @@ CANDIDATES = [0.05, 0.08, 0.10, 0.12, 0.15, 0.18, 0.20, 0.25, 0.30]
 
 def main() -> int:
     cfg = config_module.load()
-    base_policy = dict(cfg.policy)
     gate = System1(
-        questions=cfg.gate_questions(),
-        verify_questions=cfg.verify_questions(),
+        questions=cfg.gate_questions,
+        verify_questions=cfg.verify_questions,
         repo=cfg.laya.get("repo", ""),
         device=cfg.laya.get("device", "cuda:0"),
         expect_name=cfg.laya.get("expect_name", ""),
@@ -101,52 +100,49 @@ def main() -> int:
 
     print(f"cases: {len(CASES)}   gate latency median {statistics.median(latencies):.1f} ms\n")
 
-    print(f"{'threshold':>9} {'think acc':>10} {'think FP':>9} {'think FN':>9} {'s1 hits':>8}")
+    print(f"{'threshold':>9} {'accuracy':>9} {'false think':>12} {'missed think':>13} {'s1 hits':>8}")
     best = None
     for threshold in CANDIDATES:
-        trial = {**base_policy, "think_threshold": threshold}
-        tp = fp = fn = 0
-        s1_hits = 0
+        # Swap only the think threshold; every other decision comes from config.
+        by_role = {
+            d.role: (policy.Decision(d.role, d.question, threshold) if d.role == policy.THINK else d)
+            for d in cfg.decisions
+        }
+        correct = false_think = missed_think = s1_hits = 0
         for (state, want), (_, answers) in zip(CASES, scores):
-            route = policy.decide(answers, trial)
+            route = policy.decide(answers, by_role, cfg.uncertain_below)
             if route.action == policy.SYSTEM1:
                 if want == SYSTEM1:
                     s1_hits += 1
+                    correct += 1
                 continue
-            got_think = route.think
-            want_think = want == THINK
-            if got_think and want_think:
-                tp += 1
-            elif got_think and not want_think:
-                fp += 1
-            elif not got_think and want_think:
-                fn += 1
-        # `want` is one of three labels; count correct as think/fast/system1 agreement.
-        correct = 0
-        for (state, want), (_, answers) in zip(CASES, scores):
-            route = policy.decide(answers, trial)
-            if route.action == policy.SYSTEM1:
-                correct += 1 if want == SYSTEM1 else 0
-            elif route.think:
-                correct += 1 if want == THINK else 0
-            else:
-                correct += 1 if want == FAST else 0
+            if want == THINK:
+                if route.think:
+                    correct += 1
+                else:
+                    missed_think += 1
+            else:  # FAST
+                if route.think:
+                    false_think += 1
+                else:
+                    correct += 1
         accuracy = correct / len(CASES)
-        print(f"{threshold:9.2f} {accuracy:10.3f} {fp:9d} {fn:9d} {s1_hits:8d}")
+        print(f"{threshold:9.2f} {accuracy:9.3f} {false_think:12d} {missed_think:13d} {s1_hits:8d}")
         if best is None or accuracy > best[1]:
             best = (threshold, accuracy)
 
-    configured = float(base_policy["think_threshold"])
-    print(f"\nconfigured think_threshold = {configured}")
+    configured = next(d.threshold for d in cfg.decisions if d.role == policy.THINK)
+    print(f"\nconfigured think threshold = {configured}")
     print(f"best on this set           = {best[0]} (accuracy {best[1]:.3f})")
 
-    deliberate = [a["deliberation"]["noul"] for _, a in scores]
-    print(f"\ndeliberation range: {min(deliberate):.3f} - {max(deliberate):.3f}")
-    print("per-case deliberation (sorted):")
-    for (state, want), value in sorted(
-        zip([c for c in CASES], deliberate), key=lambda pair: pair[1]
+    think_question = next(d.question for d in cfg.decisions if d.role == policy.THINK)
+    values = [answers[think_question]["noul"] for _, answers in scores]
+    print(f"\n{think_question} range: {min(values):.3f} - {max(values):.3f}")
+    print("per-case scores (sorted):")
+    for (state, want), (_, answers) in sorted(
+        zip(CASES, scores), key=lambda pair: pair[1][1][think_question]["noul"]
     ):
-        print(f"  {value:.3f}  {want:8s} {state[:62]}")
+        print(f"  {answers[think_question]['noul']:.3f}  {want:8s} {state[:62]}")
     return 0
 
 

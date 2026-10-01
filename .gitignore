@@ -17,3 +17,7 @@ results/
 # Editors
 .vscode/
 .idea/
+
+# Machine-specific deployment (GPU indices, VRAM, ports).
+# Copy config/deployment.example.yaml and edit; this copy is local.
+config/deployment.yaml

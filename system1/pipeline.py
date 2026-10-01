@@ -67,21 +67,23 @@ class PipelineResult:
         }
 
 
-def render_system1(answers: dict[str, Any]) -> str:
+def render_system1(answers: dict[str, Any], questions: list[str] | None = None) -> str:
     """Render the System-1 decision as a reply.
 
     Laya never writes text. This is a template over its typed answers, and it says
     so, because a rendered decision presented as a generated answer is exactly the
     kind of thing this pipeline is supposed to avoid.
-    """
-    lines = ["[System-1 decision - classified, not generated]"]
-    classification = answers.get("classification") or {}
-    deliberation = answers.get("deliberation") or {}
 
-    if classification.get("noul") is not None:
-        lines.append(f"classification request: {classification['noul']:.2f}")
-    if deliberation.get("noul") is not None:
-        lines.append(f"needs deliberation: {deliberation['noul']:.2f}")
+    `questions` lists the question ids to surface, in order. It comes from config
+    rather than being hardcoded, so retargeting the gate at a different schema does
+    not require touching this function.
+    """
+    shown = list(answers) if questions is None else [q for q in questions if q in answers]
+    lines = ["[System-1 decision - classified, not generated]"]
+    for question_id in shown:
+        answer = answers.get(question_id) or {}
+        if answer.get("noul") is not None:
+            lines.append(f"{question_id}: {answer['noul']:.2f}")
     lines.append("This request was classified rather than answered; no model was called.")
     return "\n".join(lines)
 
@@ -106,7 +108,7 @@ class Pipeline:
         gate_result = self.gate.gate(state)
         timings["gate"] = (time.perf_counter() - started) * 1000
 
-        route = policy.decide(gate_result.answers, self.config.policy)
+        route = policy.decide(gate_result.answers, self.config.by_role, self.config.uncertain_below)
 
         if route.action == policy.BLOCK:
             return PipelineResult(
@@ -120,7 +122,7 @@ class Pipeline:
         if route.action == policy.SYSTEM1:
             return PipelineResult(
                 route=policy.SYSTEM1,
-                content=render_system1(gate_result.answers),
+                content=render_system1(gate_result.answers, self.config.system1_questions),
                 gate=gate_result,
                 gate_confidence=route.gate_confidence,
                 timings_ms=timings,
@@ -182,7 +184,7 @@ class Pipeline:
             request=flatten_state(messages),
             draft=generation.text,
         )
-        return policy.verify(result.answers, self.config.policy)
+        return policy.verify(result.answers, self.config.by_role)
 
     async def stream(
         self,
@@ -198,7 +200,7 @@ class Pipeline:
         """
         state = flatten_state(messages)
         gate_result = self.gate.gate(state)
-        route = policy.decide(gate_result.answers, self.config.policy)
+        route = policy.decide(gate_result.answers, self.config.by_role, self.config.uncertain_below)
 
         if route.action == policy.BLOCK:
             yield render_system1(gate_result.answers) if route.action == policy.SYSTEM1 else REFUSAL

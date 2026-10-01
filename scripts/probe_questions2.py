@@ -123,8 +123,8 @@ def auc(positives: list[float], negatives: list[float]) -> float:
 def main() -> int:
     cfg = config_module.load()
     gate = System1(
-        questions=cfg.gate_questions(),
-        verify_questions=cfg.verify_questions(),
+        questions=cfg.gate_questions,
+        verify_questions=cfg.verify_questions,
         repo=cfg.laya.get("repo", ""),
         device=cfg.laya.get("device", "cuda:0"),
         expect_name=cfg.laya.get("expect_name", ""),
@@ -136,7 +136,7 @@ def main() -> int:
     results = []
     for name, spec in CANDIDATES.items():
         qid = "probe"
-        questions = {**cfg.gate_questions(), qid: spec["definition"]}
+        questions = {**cfg.gate_questions, qid: spec["definition"]}
         scores: dict[str, float] = {}
         for label, tier, state in CASES:
             answer = gate.gate(state, questions).answer(qid)

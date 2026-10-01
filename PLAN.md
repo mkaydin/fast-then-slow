@@ -247,11 +247,14 @@ OOMs with `CUBLAS_STATUS_ALLOC_FAILED`. This is the main throughput headroom lef
 ### Phase 4 — Evaluation ✅ (and it found something)
 - 40 labelled cases, swept across 9 candidate thresholds (`scripts/sweep_thresholds.py`),
   plus the 10-case question probe and a 5-draft verifier probe including verbatim model
-  output. End-to-end A/B: 27.8 ms against 1282 ms.
+  output. End-to-end A/B: 28 ms against 821-1282 ms.
 - **The sweep contradicted the probe.** `needs_deliberation` measured AUC 1.000 on 10
-  cases; on 40 cases the best threshold reaches only **0.625** route accuracy and misses
-  9 of 20 genuinely hard requests. `think_threshold` moved 0.15 → **0.05** on that
-  evidence.
+  cases; on 40 cases the best threshold reaches **0.800** route accuracy and still misses
+  7 of 20 genuinely hard requests.
+- `think_threshold` stays at **0.15**, which is *not* the sweep's optimum. The 0.05 winner
+  switches off the System-1 route: `margin_confidence` normalises by `max(t, 1-t)`, so a
+  low threshold shrinks the uncertainty band until a merely-clear request reads as
+  undecidable. The 2.5-point gap is within noise for 40 hand-written labels.
 - This matches Laya's own model card (base checkpoint 0.362 on typed-decisions vs 0.766
   fine-tuned). Deliberation is the weakest link and is flagged as such in the config and
   README rather than presented as a tuned optimisation.

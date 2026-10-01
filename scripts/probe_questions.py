@@ -87,8 +87,8 @@ VARIANTS = {
 def main() -> int:
     cfg = config_module.load()
     gate = System1(
-        questions=cfg.gate_questions(),
-        verify_questions=cfg.verify_questions(),
+        questions=cfg.gate_questions,
+        verify_questions=cfg.verify_questions,
         repo=cfg.laya.get("repo", ""),
         device=cfg.laya.get("device", "cuda:0"),
         expect_name=cfg.laya.get("expect_name", ""),
@@ -99,7 +99,7 @@ def main() -> int:
     gate.gate(CASES[0][2])
 
     for name, question in VARIANTS.items():
-        probe_questions = {**cfg.gate_questions(), **question}
+        probe_questions = {**cfg.gate_questions, **question}
         rows = []
         for label, expected, state in CASES:
             result = gate.gate(state, probe_questions)
