@@ -1,7 +1,7 @@
 [project]
-name = "system1-local-ai"
+name = "fast-then-slow"
 version = "1.0.0"
-description = "Laya System-1 gate in front of a local Qwen3.5-9B int4 engine"
+description = "A calibrated System-1 decision model gating a local LLM: skip generation when a fast pass is enough, verify when it is not"
 requires-python = ">=3.10,<3.15"
 license = { text = "Apache-2.0" }
 

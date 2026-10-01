@@ -1,4 +1,6 @@
-# Laya System 1 + Qwen3.5-9B int4
+# fast-then-slow
+
+> Skip the LLM when a 28 ms model can answer. Check its answer when it can't.
 
 A local two-tier inference pipeline. **Laya** is the System-1 reflex: one
 non-autoregressive forward pass answers typed decision questions in ~28 ms.
